@@ -30,6 +30,17 @@ class IncomingMessage(BaseModel):
     media_error: Literal["", "too_large", "download_failed", "spool_full"] = ""
 
 
+class GroupInfo(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    chat: str = Field(pattern=r"^[0-9-]+@g\.us$", max_length=150)
+    name: str = Field(default="", max_length=150)
+
+
+class GroupSyncRequest(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    groups: list[GroupInfo] = Field(max_length=1000)
+
+
 def router(
     settings: Settings, db: Database, assistant: Assistant, ingestion: Ingestion | None = None
 ) -> APIRouter:
@@ -47,6 +58,22 @@ def router(
             or not secrets.compare_digest(expected, credentials.credentials)
         ):
             raise HTTPException(401, "Bridge authentication required")
+
+    @routes.post("/groups/sync", dependencies=[Depends(bridge_auth)])
+    def sync_groups(body: GroupSyncRequest):
+        synced = 0
+        with db.connect() as connection:
+            for g in body.groups:
+                name = g.name.strip()
+                if not name or name.lower() in {"current group name", "this group"}:
+                    continue
+                connection.execute(
+                    "INSERT INTO registered_groups(chat, name, enabled) VALUES (?, ?, 0) "
+                    "ON CONFLICT(chat) DO UPDATE SET name = excluded.name",
+                    (g.chat, name[:100]),
+                )
+                synced += 1
+        return {"status": "ok", "synced": synced}
 
     @routes.get("/members", dependencies=[Depends(bridge_auth)])
     def members():

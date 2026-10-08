@@ -115,3 +115,14 @@ The backend logs safe diagnostic categories: `provider_api_error` includes the u
 The assistant supports several member additions in one message. For unusually large imports, use smaller batches; the current budget is 16 tool calls per model response and 32 per request, across at most five tool rounds. These limits do not bypass permissions.
 
 See [release notes](CHANGELOG.md) for recent fixes.
+
+
+## Optional credentials and WhatsApp replies
+
+`ASSISTANT_GEMINI_API_KEYS` accepts an optional comma-separated list of credentials for ordinary chat. The single `ASSISTANT_GEMINI_API_KEY` remains supported and is included after that list if distinct. Attempts are bounded, cooldowns are tracked per credential and model, and the configured daily user/team request caps remain unchanged. [Google applies quotas per project, not per API key](https://ai.google.dev/gemini-api/docs/rate-limits); multiple keys do not necessarily increase capacity. Only configure credentials you are authorized to use, and account for each project's billing settings.
+
+PDF File Search does **not** rotate between projects. Set `ASSISTANT_DOCUMENT_API_KEY` to a credential for the project owning the existing index. If omitted, the single key is used, or the first pool key when no single key exists. Changing the owning project requires an intentional index migration; keep the Drive files as the canonical source. Gemini-grounded web search uses the primary chat client; the default DDGS search does not use Gemini credentials.
+
+WhatsApp answers quote the incoming message. The queue stores a minimal text quote rather than the complete media envelope. A send with an uncertain outcome is not automatically repeated as an unquoted message, preventing duplicate delivery. Proactive reminders are sent without a quote.
+
+Group discovery updates names without granting access. Newly discovered groups start disabled in whitelist mode; the owner can tell the assistant inside the group to remember it. A previously disabled group stays disabled after metadata sync. Public mode still intentionally allows replies across chats, subject to sender blocks and trigger settings.

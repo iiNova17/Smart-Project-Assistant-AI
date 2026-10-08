@@ -30,16 +30,27 @@ def revision(file: dict) -> str:
 
 
 class Knowledge:
-    def __init__(self, settings: Settings, db: Database, drive: DriveClient, client=None):
+    def __init__(
+        self,
+        settings: Settings,
+        db: Database,
+        drive: DriveClient,
+        client=None,
+        api_keys: list[str] | None = None,
+    ):
         self.settings, self.db, self.drive = settings, db, drive
         self.lock = threading.Lock()
         self.last_error = ""
-        self.client = client or genai.Client(
-            api_key=settings.gemini_api_key.get_secret_value(),
-            http_options=types.HttpOptions(
-                timeout=90000, retry_options=types.HttpRetryOptions(attempts=1)
-            ),
+        timeout_opts = types.HttpOptions(
+            timeout=90000, retry_options=types.HttpRetryOptions(attempts=1)
         )
+        # File Search stores belong to one project. Never rotate their credentials.
+        key = (
+            settings.document_api_key.get_secret_value()
+            or settings.gemini_api_key.get_secret_value()
+            or (api_keys[0] if api_keys else "")
+        )
+        self.client = client or genai.Client(api_key=key, http_options=timeout_opts)
 
     def close(self):
         self.client.close()
@@ -65,7 +76,7 @@ class Knowledge:
             return ""
         remote = self.client.file_search_stores.create(
             config=types.CreateFileSearchStoreConfig(
-                display_name="Smart Project Assistant AI - project PDFs",
+                display_name="Project Assistant - project PDFs",
                 embedding_model="models/gemini-embedding-2",
             )
         )

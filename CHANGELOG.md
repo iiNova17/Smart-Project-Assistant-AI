@@ -1,5 +1,14 @@
 # Release notes
 
+## 2026-10-09 — Reply context and reliability review
+
+- Port quoted WhatsApp replies, group-name discovery and optional multiple chat credentials.
+- Prevent duplicate plain-message retries after uncertain quoted sends; store minimal quote context.
+- Preserve disabled groups during discovery and require explicit registration for new groups in whitelist mode. Validate group IDs and bound sync batches.
+- Bound key rotation, honor per-model cooldowns, redact credential settings, and preserve configured daily request caps.
+- Pin PDF indexing/retrieval to one credential rather than rotating across project-owned stores.
+- Add regression tests covering these behaviors and document configuration and limitations.
+
 ## 2026-10-08 — Public template fixes
 
 - Allow multi-person requests with up to 16 tool calls per model response, within a 32-call request budget. Every action still passes the same backend permissions and approval rules.
