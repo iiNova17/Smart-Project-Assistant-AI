@@ -8,6 +8,7 @@ import makeWASocket, { DisconnectReason, downloadMediaMessage, normalizeMessageC
 import pino from 'pino';
 import QRCode from 'qrcode';
 import { Store } from './store.mjs';
+import { formatWhatsApp } from './format.mjs';
 import { approvedGroup, canReply, extractMessage, normalize, phoneOf, resolvePhone } from './policy.mjs';
 import { saveAttachment, discardAttachment } from './media.mjs';
 
@@ -185,7 +186,7 @@ async function work() {
     // A crash after sending is ambiguous. Never automatically replay that send.
     store.state(job.id, 'sending');
     try {
-      const sent = await socket.sendMessage(job.chat, { text: job.reply });
+      const sent = await socket.sendMessage(job.chat, { text: formatWhatsApp(job.reply) });
       if (!sent?.key?.id) throw new Error('Missing outbound ID');
       store.state(job.id, 'sent', sent.key.id);
       if (payload.notification_id) { try { await notificationState(payload.notification_id, 'sent'); } catch {} }

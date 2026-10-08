@@ -63,8 +63,8 @@ class Assistant:
         try:
             async with asyncio.timeout(self.settings.provider_timeout_seconds):
                 result = await self.provider.complete([*history, Message("user", text)])
-        except Exception:
-            logger.warning("generation_failed")
+        except Exception as error:
+            logger.warning("generation_failed type=%s", type(error).__name__)
             raise ProviderUnavailable() from None
         if not result.text.strip() or len(result.text) > 64000:
             raise ProviderUnavailable()

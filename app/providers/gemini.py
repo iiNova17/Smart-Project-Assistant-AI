@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from datetime import UTC, datetime, timedelta
 
 from google import genai
@@ -7,6 +8,10 @@ from google.genai import errors, types
 from app.config import Settings
 from app.domain import Completion, Message, ProviderUnavailable
 from app.drive_tools import DriveTools
+
+logger = logging.getLogger("assistant.provider")
+MAX_CALLS_PER_ROUND = 16
+MAX_CALLS_PER_REQUEST = 32
 
 SYSTEM_PROMPT = """You are a project assistant whose identity and project are supplied in context.
 Use only capabilities that are currently configured. Never claim a write happened without a
@@ -86,6 +91,7 @@ class GeminiProvider:
             model = self.settings.gemini_model
             if datetime.now(UTC) < self.quota_until and self.settings.gemini_fallback_model:
                 model = self.settings.gemini_fallback_model
+            executed_calls = 0
             for round_number in range(6):
                 config = types.GenerateContentConfig(
                     system_instruction=prompt,
@@ -96,6 +102,7 @@ class GeminiProvider:
                 try:
                     response = await self.generate(model=model, contents=contents, config=config)
                 except errors.APIError as error:
+                    logger.warning("provider_api_error status=%s", error.code)
                     fallback = self.settings.gemini_fallback_model
                     if error.code != 429 or not fallback or model == fallback:
                         raise
@@ -113,6 +120,10 @@ class GeminiProvider:
                     response = await self.generate(model=model, contents=contents, config=config)
                 candidate = (response.candidates or [None])[0]
                 if candidate is None or candidate.finish_reason != types.FinishReason.STOP:
+                    logger.warning(
+                        "provider_incomplete finish=%s",
+                        candidate.finish_reason if candidate else "missing_candidate",
+                    )
                     raise ProviderUnavailable()
                 parts = candidate.content.parts if candidate.content else []
                 usage = response.usage_metadata
@@ -123,8 +134,20 @@ class GeminiProvider:
                     )
                 calls = [part.function_call for part in (parts or []) if part.function_call]
                 if calls:
-                    if not enabled or round_number == 5 or len(calls) > 4:
+                    if (
+                        not enabled
+                        or round_number == 5
+                        or len(calls) > MAX_CALLS_PER_ROUND
+                        or executed_calls + len(calls) > MAX_CALLS_PER_REQUEST
+                    ):
+                        logger.warning(
+                            "provider_tool_limit round=%s calls=%s executed=%s",
+                            round_number,
+                            len(calls),
+                            executed_calls,
+                        )
                         raise ProviderUnavailable()
+                    executed_calls += len(calls)
                     # Preserve the provider's full content, including thought signatures,
                     # when returning tool results. Hidden thoughts never reach the user.
                     contents.append(candidate.content)
@@ -211,7 +234,12 @@ class GeminiProvider:
                     else "conversation_and_general_reasoning",
                 )
             raise ProviderUnavailable()
-        except Exception:
+        except Exception as error:
+            logger.warning(
+                "provider_failed type=%s status=%s",
+                type(error).__name__,
+                error.code if isinstance(error, errors.APIError) else "none",
+            )
             # Upstream errors may contain prompts/keys. No raw error logging.
             raise ProviderUnavailable() from None
 

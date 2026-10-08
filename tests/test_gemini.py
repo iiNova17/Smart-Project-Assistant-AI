@@ -252,3 +252,89 @@ def test_document_answer_delivered_directly_with_backend_citations(monkeypatch):
     contents = client.aio.models.generate_content.call_args.kwargs["contents"]
     assert contents[0].parts[0].text == "Let's discuss RS06"
     assert contents[2].parts[0].text == "What is its torque?"
+
+
+def test_eight_member_actions_run_and_return_all_tool_results(monkeypatch):
+    calls = types.GenerateContentResponse(
+        candidates=[
+            types.Candidate(
+                finish_reason="STOP",
+                content=types.Content(
+                    role="model",
+                    parts=[
+                        types.Part(
+                            function_call=types.FunctionCall(
+                                name="assistant_action",
+                                id=f"member-{i}",
+                                args={
+                                    "action": "member_update",
+                                    "operation": "whitelist",
+                                    "target": f"20100000000{i}",
+                                    "title": f"Member {i}",
+                                },
+                            )
+                        )
+                        for i in range(8)
+                    ],
+                ),
+            )
+        ]
+    )
+    final = types.GenerateContentResponse(
+        candidates=[
+            types.Candidate(
+                finish_reason="STOP",
+                content=types.Content(
+                    role="model", parts=[types.Part(text="Added all eight teammates.")]
+                ),
+            )
+        ]
+    )
+    provider, client = build_provider(monkeypatch, final)
+    client.aio.models.generate_content.side_effect = [calls, final]
+    provider.tools = MagicMock(ready=True)
+    provider.tools.declarations.return_value = []
+    provider.tools.execute = AsyncMock(return_value={"result": "Approved regular member"})
+    result = asyncio.run(provider.complete([Message("user", "Add these eight teammates")]))
+    assert result.text == "Added all eight teammates."
+    assert provider.tools.execute.await_count == 8
+    responses = client.aio.models.generate_content.call_args.kwargs["contents"][2].parts
+    assert len(responses) == 8
+    assert [p.function_response.id for p in responses] == [f"member-{i}" for i in range(8)]
+
+
+def test_oversized_tool_batch_rejected_before_any_write(monkeypatch, caplog):
+    response = types.GenerateContentResponse(
+        candidates=[
+            types.Candidate(
+                finish_reason="STOP",
+                content=types.Content(
+                    role="model",
+                    parts=[
+                        types.Part(
+                            function_call=types.FunctionCall(name="assistant_action", args={})
+                        )
+                        for _ in range(17)
+                    ],
+                ),
+            )
+        ]
+    )
+    provider, _ = build_provider(monkeypatch, response)
+    provider.tools = MagicMock(ready=True)
+    provider.tools.declarations.return_value = []
+    provider.tools.execute = AsyncMock()
+    with pytest.raises(ProviderUnavailable):
+        asyncio.run(provider.complete([Message("user", "Private input must not be logged")]))
+    provider.tools.execute.assert_not_awaited()
+    assert "provider_tool_limit" in caplog.text
+    assert "Private input" not in caplog.text
+
+
+def test_failure_diagnostics_do_not_log_exception_body(monkeypatch, caplog):
+    provider, client = build_provider(monkeypatch, None)
+    client.aio.models.generate_content.side_effect = RuntimeError("secret-key-and-private-prompt")
+    with pytest.raises(ProviderUnavailable):
+        asyncio.run(provider.complete([Message("user", "private")]))
+    assert "RuntimeError" in caplog.text
+    assert "secret-key-and-private-prompt" not in caplog.text

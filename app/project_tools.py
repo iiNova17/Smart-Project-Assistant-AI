@@ -40,7 +40,11 @@ class ProjectTools(DriveTools):
             if actor
             else {"name": "unknown", "admin": False}
         )
-        zone = self.commands.schedule.timezone(actor.user.id) if actor else "UTC"
+        zone = (
+            self.commands.schedule.timezone(actor.user.id)
+            if actor
+            else self.commands.settings.default_timezone
+        )
         sender.update(
             {"phone": actor.phone, "chat": actor.chat, "channel": actor.channel}
         ) if actor else None
@@ -58,13 +62,25 @@ class ProjectTools(DriveTools):
             + "; week starts weekday "
             + str(self.commands.settings.week_start)
             + " (Monday=0, Sunday=6)."
+            + (
+                "\nWhatsApp presentation: use native *bold* with single asterisks, never **bold** "
+                "or Markdown # headings/tables. Put the direct answer first. Break longer answers "
+                "into short paragraphs with *section titles* and blank lines between sections. "
+                "Use - bullets or numbered steps. "
+                "Use occasional relevant emojis for schedules, sources and confirmed success. "
+                "Never imply success before a tool succeeds. Put source labels and raw URLs on "
+                "separate lines instead of Markdown links. Preserve technical units, equations and "
+                "citations. Be concise but do not omit needed detail."
+                if actor and actor.channel in {"group", "dm"}
+                else ""
+            )
             + "\nYou are a conversational assistant, not a command manual. Answer the actual "
             "question "
             "naturally and proportionately. A capability question needs a short useful "
             "explanation, "
             "not a biography or repeated ownership claims. Mention your creator only when "
             "relevant. Default to 2–5 sentences or a few short bullets; avoid long capability "
-            "catalogues, emoji headings, repeated disclaimers and generic closing questions. "
+            "catalogues, repeated disclaimers and generic closing questions. "
             "Do not present proposed work as active or completed. "
             "Use reasoning and tools to finish requested tasks; do not tell people to type slash "
             "commands, supply ISO dates, or perform a tool operation themselves. Infer relative "
@@ -77,6 +93,10 @@ class ProjectTools(DriveTools):
             "what is on the calendar, with period=this_week, next_week, today, tomorrow or "
             "upcoming. "
             "Use the configured week start; mention the returned date range naturally. "
+            "Calendar range ends and all-day event end.date are exclusive: an end at Saturday "
+            "midnight means through Friday; an all-day event ending October 8 includes October 7 "
+            "but not October 8. Render these as inclusive human-readable dates, "
+            "never an extra day. "
             "Use team_availability for conflicts; incomplete timetables mean unknown, not free. "
             "All approved teammates can save shared memories, maintain their own timetable, "
             "read shared calendar events and request scheduling by default. Live permission rules "

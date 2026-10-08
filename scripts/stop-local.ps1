@@ -8,6 +8,9 @@ foreach ($record in $records) {
     $process = Get-Process -Id $record.id -ErrorAction SilentlyContinue
     if ($process -and $process.StartTime.ToUniversalTime().Ticks.ToString() -eq $record.started) {
         Stop-Process -Id $process.Id
+        if (-not $process.WaitForExit(10000)) {
+            throw "A recorded service did not exit within 10 seconds; retry stopping before starting."
+        }
     }
 }
 Write-Output 'Recorded local services stopped. WhatsApp login is preserved.'

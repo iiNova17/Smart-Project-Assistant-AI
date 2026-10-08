@@ -105,3 +105,13 @@ Tests use isolated databases and mocked external services; they do not send real
 
 Licensed under the existing [MIT license](LICENSE).
 
+
+## Diagnosing an unavailable reply
+
+An unavailable response is not proof that no action happened. Check the current member list, calendar or saved records before repeating a request that changes them. Action receipts prevent duplicate execution within a request, but a new message is a new request.
+
+The backend logs safe diagnostic categories: `provider_api_error` includes the upstream HTTP status (429 commonly indicates quota), `provider_incomplete` records the finish reason, `provider_tool_limit` reports the bounded tool budget, and `generation_failed` identifies timeouts or provider failures. Logs intentionally omit prompts, API keys, tool arguments and raw exception messages. Windows background-service logs are under the ignored `data/` directory; the foreground launcher displays them in the terminal.
+
+The assistant supports several member additions in one message. For unusually large imports, use smaller batches; the current budget is 16 tool calls per model response and 32 per request, across at most five tool rounds. These limits do not bypass permissions.
+
+See [release notes](CHANGELOG.md) for recent fixes.
