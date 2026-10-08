@@ -1,0 +1,1 @@
+"""Smart Project Assistant AI."""
