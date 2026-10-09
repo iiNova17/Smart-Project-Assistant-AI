@@ -10,7 +10,9 @@ A customizable AI teammate for your project: conversational WhatsApp group/DM su
 - Searches Drive, receives/uploads files, avoids duplicate uploads and indexes PDFs added directly to Drive.
 - Saves explicit project memories, tracks revisions and keeps current project status separate from the system prompt.
 - Reads and changes shared Google Calendar events; accepts manual timetables from people without Google Calendar.
+- Subscribes to member/cohort Google calendars, imports confirmed timetable photos, and suggests meeting times within constraints.
 - Checks conflicts without treating missing schedules as guaranteed availability.
+- Sends private WhatsApp reminders and mentions their recipients in group reminders.
 - Supports public, approved-members-only and owner-only access.
 - Lets the owner change permissions conversationally, including rules requiring another person’s approval before an action.
 - Schedules tasks and reminders with a clear preview-and-confirm workflow, wall-clock recurrence across DST, atomic occurrence claims, and automatic suppression of stale runs (>15m offline).
@@ -136,7 +138,7 @@ Group discovery updates names without granting access. Newly discovered groups s
 
 Scheduled reminders, explicit messages and a structured project-status summary are supported. Creating or rescheduling a reminder requires a separate user confirmation; proposals expire after 15 minutes. The `reminders` capability controls scheduling, and message/summary tasks also require `send_message`. Current permissions and destinations are checked again at execution and delivery. Approval rules may require a designated approver; requester confirmation alone never grants permission. A queued notification is not proof of delivery.
 
-Scheduled Calendar operations and Drive report generation are **not implemented** and are explicitly rejected. Immediate Calendar and Drive tools remain available under their existing permissions. Saved stickers can be sent as WhatsApp media in the current conversation; sender permissions and asset visibility are checked at queuing and delivery. Repeated tool calls in the same request do not duplicate the send, and uncertain sends are not automatically retried. Sticker storage remains local; Drive synchronization and complete animated-image validation still need implementation. WhatsApp photo understanding supports direct images and quoted-image questions through Gemini. JPEG, PNG and static WebP are validated (8 MiB, 20 megapixels); temporary media is deleted after preparation and image bytes are not saved in chat history. Mention/reply triggers still apply in groups. Calendar subscriptions, timetable-image imports and web image upload are still planned. Voice-note handling has integration tests with a mocked transcriber, not a certification of dialect accuracy or every real media format.
+Scheduled Calendar operations and Drive report generation are **not implemented** and are explicitly rejected. Immediate Calendar and Drive tools remain available under their existing permissions. Saved stickers can be sent as WhatsApp media in the current conversation; sender permissions and asset visibility are checked at queuing and delivery. Repeated tool calls in the same request do not duplicate the send, and uncertain sends are not automatically retried. Sticker storage remains local; Drive synchronization and complete animated-image validation still need implementation. WhatsApp photo understanding supports direct images and quoted-image questions through Gemini. JPEG, PNG and static WebP are validated (8 MiB, 20 megapixels); temporary media is deleted after preparation and image bytes are not saved in chat history. Mention/reply triggers still apply in groups. Calendar subscriptions, member mappings, confirmed timetable-image imports and constrained meeting suggestions are implemented. Web image upload remains future work. Voice-note handling has integration tests with a mocked transcriber, not a certification of dialect accuracy or every real media format.
 
 See [the audit and next-feature implementation plan](docs/calendar-images-plan.md) before extending these features. Passing unit tests is not a claim that all external integrations or media workflows have been verified live.
 
@@ -144,3 +146,8 @@ See [the audit and next-feature implementation plan](docs/calendar-images-plan.m
 ### Asking about a photo
 
 Send a photo with your question in a DM, mention the bot in a group photo caption, or reply to a photo and mention the bot. A captionless DM photo is described automatically. For another visual inspection in a later turn, quote or resend the photo; chat history retains the discussion but not image pixels. Ordinary group photos remain quiet.
+
+
+## Personal calendars and meeting planning
+
+Link university/personal Google calendars to the people they apply to, or import their timetable photos after a review and separate confirmation. Meeting checks combine these sources with manual slots and the shared project calendar. Private reminders use DMs; group reminders include real mentions. See [availability, subscriptions and timetable imports](docs/availability.md) for examples, permissions, coverage rules and limitations.

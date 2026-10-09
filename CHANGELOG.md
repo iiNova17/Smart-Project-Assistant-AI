@@ -1,5 +1,16 @@
 # Release notes
 
+## 2026-10-09 — Personal reminders and shared availability
+
+- Correct private reminder routing, including incoming WhatsApp LIDs; show the exact DM recipient in confirmation previews.
+- Add real WhatsApp mentions to scheduled and legacy group reminders.
+- Persist Google Calendar subscriptions bound to selected members; batch live free/busy checks without sharing private event titles.
+- Add confirmed, versioned timetable-photo imports with validity dates, holidays and alternating weeks.
+- Suggest meeting times with member, weekday, duration, daily-hour and break constraints, explicitly marking incomplete coverage.
+- Apply current personal-schedule/delegated-edit permissions and approval rules to source changes.
+- Document setup, examples and supported limitations in docs/availability.md.
+
+
 ## 2026-10-09 — WhatsApp image understanding
 
 - Stop dropping image messages; preserve photo captions and mentions.
