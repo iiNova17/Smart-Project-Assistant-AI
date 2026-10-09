@@ -13,7 +13,11 @@ A customizable AI teammate for your project: conversational WhatsApp group/DM su
 - Checks conflicts without treating missing schedules as guaranteed availability.
 - Supports public, approved-members-only and owner-only access.
 - Lets the owner change permissions conversationally, including rules requiring another person’s approval before an action.
-- Sends requested messages and recurring group reminders through a durable local queue.
+- Schedules tasks and reminders with a clear preview-and-confirm workflow, wall-clock recurrence across DST, atomic occurrence claims, and automatic suppression of stale runs (>15m offline).
+- Transcribes supported WhatsApp voice notes through Gemini with temporary file cleanup; accuracy varies with language, noise and recording quality.
+- Saves and sends reusable WhatsApp stickers with SHA-256 deduplication and permissions.
+- Answers questions about WhatsApp photos, including photos quoted in a reply.
+- Ingests structured incoming reply context as untrusted reference material, isolating speaker identity and instructions.
 - Provides a centered light/dark web client that opens ready to chat on the owner’s computer.
 
 Say things like “What’s on our calendar this week?”, “Remember this design decision”, “I have class every Monday from 9 to 11”, or “Require my approval before scheduling meetings.” Ordinary authorized actions execute directly. Critical access changes and configured approval rules require confirmation. The model never receives API keys or OAuth credentials.
@@ -70,7 +74,7 @@ python -m app.admin approve-whatsapp-member --phone "+15555550200" --name "Teamm
 
 ## Identity, permissions and memory
 
-The permanent owner cannot be blocked, removed or replaced by another member. Project role descriptions do not grant administrative authority. Approved members can save memories, maintain their own timetables, read the shared calendar and request event changes by default. Other operations start admin-only; the owner can grant scoped capabilities.
+The permanent owner cannot be blocked, removed or replaced by another member. Project role descriptions do not grant administrative authority. Approved members can save memories, maintain their own timetables, read the shared calendar, request event changes and use stickers by default. Other operations start admin-only; the owner can grant scoped capabilities.
 
 Permission rules can allow, deny or require approval, globally or per member. Requests awaiting approval persist and notify designated approvers through WhatsApp. Any listed approver may approve; current permissions are checked again before execution. “Approve the design review” works without a slash command. Opening public access and appointing admins require owner confirmation.
 
@@ -90,7 +94,7 @@ The web UI automatically trusts the local owner machine. **Do not expose it thro
 
 Baileys is an unofficial WhatsApp Web integration. Account restrictions, protocol changes and maintenance are possible. Normal groups are supported, but every participant can see group answers regardless of sender whitelist. Only one backend worker/instance and one bridge should use the local databases/session.
 
-Reminders stop while the PC is offline; old missed occurrences are skipped. Interrupted message delivery can be uncertain and is not blindly resent. Calendar recurring series edits, full task management, non-PDF content parsing, advanced agents, audio overviews and Discord are not implemented.
+Tasks and reminders pause while the PC is offline; stale missed occurrences (>15m) are recorded and skipped rather than dumped into chats upon restart. Interrupted message delivery can be uncertain and is not blindly resent. Calendar recurring series edits, non-PDF content parsing, advanced agents, and Discord are not implemented.
 
 ## Development
 
@@ -126,3 +130,17 @@ PDF File Search does **not** rotate between projects. Set `ASSISTANT_DOCUMENT_AP
 WhatsApp answers quote the incoming message. The queue stores a minimal text quote rather than the complete media envelope. A send with an uncertain outcome is not automatically repeated as an unquoted message, preventing duplicate delivery. Proactive reminders are sent without a quote.
 
 Group discovery updates names without granting access. Newly discovered groups start disabled in whitelist mode; the owner can tell the assistant inside the group to remember it. A previously disabled group stays disabled after metadata sync. Public mode still intentionally allows replies across chats, subject to sender blocks and trigger settings.
+
+
+## Audited feature status (9 October 2026)
+
+Scheduled reminders, explicit messages and a structured project-status summary are supported. Creating or rescheduling a reminder requires a separate user confirmation; proposals expire after 15 minutes. The `reminders` capability controls scheduling, and message/summary tasks also require `send_message`. Current permissions and destinations are checked again at execution and delivery. Approval rules may require a designated approver; requester confirmation alone never grants permission. A queued notification is not proof of delivery.
+
+Scheduled Calendar operations and Drive report generation are **not implemented** and are explicitly rejected. Immediate Calendar and Drive tools remain available under their existing permissions. Saved stickers can be sent as WhatsApp media in the current conversation; sender permissions and asset visibility are checked at queuing and delivery. Repeated tool calls in the same request do not duplicate the send, and uncertain sends are not automatically retried. Sticker storage remains local; Drive synchronization and complete animated-image validation still need implementation. WhatsApp photo understanding supports direct images and quoted-image questions through Gemini. JPEG, PNG and static WebP are validated (8 MiB, 20 megapixels); temporary media is deleted after preparation and image bytes are not saved in chat history. Mention/reply triggers still apply in groups. Calendar subscriptions, timetable-image imports and web image upload are still planned. Voice-note handling has integration tests with a mocked transcriber, not a certification of dialect accuracy or every real media format.
+
+See [the audit and next-feature implementation plan](docs/calendar-images-plan.md) before extending these features. Passing unit tests is not a claim that all external integrations or media workflows have been verified live.
+
+
+### Asking about a photo
+
+Send a photo with your question in a DM, mention the bot in a group photo caption, or reply to a photo and mention the bot. A captionless DM photo is described automatically. For another visual inspection in a later turn, quote or resend the photo; chat history retains the discussion but not image pixels. Ordinary group photos remain quiet.
